@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   width="365" height="222" backgroundColor="#EDEDED"
+					   applicationComplete="responseRequest.send();refreshData();initApp();checkForUpdate();"
+					   showStatusBar="false">
+	<fx:Declarations>
+		<s:HTTPService id="responseRequest" url="http://www.eolo.it/eoloapp/" useProxy="false" method="GET" resultFormat="text"
+					   fault="Alert.show('Impossibile leggere i dati. Verificare la connessione ad Internet.','Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);" result="responseJSON(event)">
+			<mx:request xmlns="">
+				<!-- Parametri per la GET -->
+				<a>parametroA</a>
+			</mx:request>
+		</s:HTTPService>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			// Import per la gestione dell'update
+			import air.update.ApplicationUpdaterUI;
+			import air.update.events.UpdateEvent;
+			
+			// Import per la gestione del JSON
+			import com.adobe.serialization.json.JSON; // https://github.com/mikechambers/as3corelib
+			
+			// Import per la gestione degli alert e degli eventi
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			// Inizializzo l'icona per gli errori
+			[Embed(source="assets/iconError.png")] public var iconError:Class;
+									
+			// Funzione per il refresh dei dati temporizzato
+			private function refreshData():void {
+				var minuteTimer:Timer = new Timer(5000, 0); // Esecuzione ogni 5000ms fino a infinito (0)
+				minuteTimer.addEventListener(TimerEvent.TIMER, onTick); // Listener per l'azione da eseguire
+				minuteTimer.start(); // Faccio partire il counter per il refresh
+			}
+			// Trigger per il refresh dei dati
+			public function onTick(event:TimerEvent):void {
+				responseRequest.send();
+			}
+			
+			// Funzione per prelevare e parsare il responso
+			private function responseJSON(event:ResultEvent):void {
+				// Prelevo il JSON e lo converto in stringa
+				var rawData:String = String(event.result);
+				var responseJson:Object = JSON.decode(rawData);
+				
+				// Controllo il responso
+				if(responseJson.response.status == 400) {
+					Alert.show("Per poter visualizzare i dati di connessione, e' necessario utilizzare una connessione EOLO10",'Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);
+				} else if(responseJson.response.status == 200) {
+					// Eseguo i calcoli sui valori, facendo il cast corretto
+					var usedValue:int = responseJson.data.used;
+					var quotaValue:int = responseJson.data.quota;
+					var dispoValue:int = quotaValue - usedValue;
+					// Se il traffico consumato e' maggiore de disponibile, allora forzo il disponibile a 0
+					if(dispoValue <= 0) {
+						dispoValue = 0;
+					}
+					// Valorizzo i campi sulla base di quanto prelevato dal JSON
+					usedTxt.text = responseJson.data.used + " MB";
+					voiceTxt.text = responseJson.voice.credit + " €";
+					remainTxt.text = dispoValue.toString() + " MB";
+					
+					// Cambio il colore dell'icona in funzione del traffico disponibile
+					var percentUsed:int = (usedValue/quotaValue) * 100;
+					if(percentUsed <= 80)
+						trafficIcon.source = 'assets/iconGreen.png';
+					else if(percentUsed < 100)
+						trafficIcon.source = 'assets/iconOrange.png';
+					else if(percentUsed >= 100) {
+						trafficIcon.source = 'assets/iconRed.png';
+						notify();	
+					}
+				} else {
+					Alert.show('Si e\' verificato un errore. Riprovare piu\' tardi','Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);
+				}
+			}
+			
+			// Funzione per la chiusura dell'Applicazione a chiusura della finestra di Alert
+			private function closeAppOnErr(event:CloseEvent):void {
+				NativeApplication.nativeApplication.exit();
+			}
+			
+			/*************************
+			 * Gestione degli update *
+			 *************************/
+			// Inizializzo UI per gestione update
+			private var updater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
+			
+			// Inizializzo updater
+			private function checkForUpdate():void{
+				updater.updateURL = "http://www.eolo.it/eoloapp/update.xml";
+				updater.isCheckForUpdateVisible = false;
+				updater.addEventListener(UpdateEvent.INITIALIZED, updaterInitialized);
+				updater.initialize();
+			}
+			
+			// Verifico la presenza di aggiornamenti
+			private function updaterInitialized(event:UpdateEvent):void{
+				updater.checkNow();
+			}
+			
+			/*********************************
+			 * Gestione Icona sysTray o dock *
+			 *********************************/
+			private var trayIcon:BitmapData; // Crea la variabile di tipo immagine per l'icona
+			
+			// Inizializzazione del blocco per la Dock o SysTray
+			public function initApp():void {
+				var loader:Loader = new Loader(); // Inizializza il loader per l'icona
+				this.addEventListener(Event.CLOSING, closeApp); // Intercetta la chiusura dell'APP
+				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, readyToTray);
+				// Usa una differente icona a seconda del Sistema Operativo
+				if (NativeApplication.supportsSystemTrayIcon)
+					loader.load(new URLRequest("assets/icon16.png"));
+				else if (NativeApplication.supportsDockIcon)
+					loader.load(new URLRequest("assets/icon128.png"));
+				else
+					loader.load(new URLRequest("assets/icon16.png"));
+			}
+			
+			// Funzione per la riduzione a Dock o SysTray
+			private function minToTray(event:Event):void {
+				dock();
+			}
+			
+			// Gestione degli eventi per il menu e la riduzione a Dock o SysTray
+			public function readyToTray(event:Event):void {
+				trayIcon = event.target.content.bitmapData; // Riempie l'oggetto trayIcon con l'icona
+				
+				var myMenu:NativeMenu = new NativeMenu(); // Crea il menu
+				
+				var openItem:NativeMenuItem = new NativeMenuItem("Apri"); // Crea la voce di riapertura dell'APP nel menu
+				var closeItem:NativeMenuItem = new NativeMenuItem("Chiudi applicazione"); // Crea la voce di chiusura dell'APP nel menu
+				
+				openItem.addEventListener(Event.SELECT, unDock); // Gestione del click su menu per riapertura dell'APP
+				closeItem.addEventListener(Event.SELECT, closeApp); // Gestione del click su menu per chiusura dell'APP
+				
+				myMenu.addItem(openItem); // Inserisce menu per riaprire l'APP
+				myMenu.addItem(new NativeMenuItem("", true)); // Inserisce una riga vuota
+				myMenu.addItem(closeItem); // Inseriesce menu per la chiusura dell'APP
+				
+
+				if (NativeApplication.supportsSystemTrayIcon) { // Per Windows
+					NativeApplication.nativeApplication.autoExit = false;
+					SystemTrayIcon(NativeApplication.nativeApplication.icon).tooltip = "EOLO10app"; // Tooltip dell'app in SysTray
+					SystemTrayIcon(NativeApplication.nativeApplication.icon).addEventListener(MouseEvent.CLICK, unDock);
+					stage.nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, winMinimized);
+					SystemTrayIcon(NativeApplication.nativeApplication.icon).menu = myMenu; // Aggiunge il menu
+				}
+				else if (NativeApplication.supportsDockIcon) { // Per OSX
+					DockIcon(NativeApplication.nativeApplication.icon).addEventListener(InvokeEvent.INVOKE, unDock);
+					stage.nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, winMinimized);
+					DockIcon(NativeApplication.nativeApplication.icon).menu = myMenu; // Aggiunge il menu
+				}
+			}
+			
+			// Verifica se l'APP e' in Dock o SysTray
+			private function winMinimized(displayStateEvent:NativeWindowDisplayStateEvent):void {
+				if(displayStateEvent.afterDisplayState == NativeWindowDisplayState.MINIMIZED) {
+					dock();
+				}
+			}
+			
+			// Riduce nella Dock o nel SysTray l'APP
+			public function dock():void {
+				stage.nativeWindow.visible = false;
+				NativeApplication.nativeApplication.icon.bitmaps = [trayIcon];
+			}
+			
+			// Riapertura dell'APP quando e in Dock o SysTray
+			public function unDock(event:Event):void {
+				stage.nativeWindow.visible = true;
+				stage.nativeWindow.orderToFront();
+				stage.nativeWindow.activate();
+				stage.nativeWindow.restore();
+				NativeApplication.nativeApplication.icon.bitmaps = [];
+			}
+			
+			// Gestione della chiusura dell'APP
+			private function closeApp(event:Event):void {
+				NativeApplication.nativeApplication.exit();
+			}
+			
+			// Bounce dell'icona se si supera la quota
+			public function notify():void{
+				if(NativeApplication.supportsDockIcon){
+					var dock:DockIcon = NativeApplication.nativeApplication.icon as DockIcon;
+					dock.bounce(NotificationType.CRITICAL);
+				} else if (NativeApplication.supportsSystemTrayIcon){
+					stage.nativeWindow.notifyUser(NotificationType.CRITICAL);
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+		<s:fill>
+			<s:LinearGradient rotation="90">
+				<s:GradientEntry color="#4AAEF0" />
+				<s:GradientEntry color="#285DAA" />
+			</s:LinearGradient>
+		</s:fill>
+	</s:Rect>
+	<s:Label id="remainTxt" x="274" y="134.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
+	<s:Label id="voiceTxt" x="271" y="163.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
+	<s:Image left="0" bottom="0" width="103" height="107" smooth="true" source="@Embed('assets/bottomSx.png')"/>
+	<s:Image left="11" top="14" width="150" height="82" smooth="true" smoothingQuality="default" source="@Embed('assets/logo.png')"/>
+	<s:Label x="115" y="105" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo traffico di oggi:" verticalAlign="bottom"/>
+	<s:Label x="115" y="134" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo traffico disponibile:" verticalAlign="bottom"/>
+	<s:Label x="115" y="163" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo credito EOLOvoce:" verticalAlign="bottom"/>
+	<s:Image x="310" y="188" width="40" height="24" smooth="true" source="@Embed('assets/logoNGI.png')"/>
+	<s:Label id="usedTxt" x="248" y="105.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
+	<s:Image id="trafficIcon" right="17" top="14" width="60" height="60" scaleMode="letterbox" smooth="true" source="assets/iconGreen.png"/>
+</s:WindowedApplication>
