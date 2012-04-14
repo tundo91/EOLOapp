@@ -210,12 +210,12 @@
 	<s:Image left="0" bottom="0" width="103" height="107" smooth="true" source="@Embed('assets/bottomSx.png')"/>
 	<s:Image left="11" top="14" width="150" height="82" smooth="true" smoothingQuality="default" source="@Embed('assets/logo.png')"/>
 	<s:Label x="115" y="105" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo traffico di oggi:" verticalAlign="bottom"/>
-	<s:Label x="115" y="201" height="12" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana"
-			 fontSize="8" text="I dati sono aggiornati ogni 10 minuti"
+	<s:Label x="115" y="193" width="167" height="23" chromeColor="#CCCCCC" color="#FFFFFF"
+			 fontFamily="Verdana" fontSize="8"
+			 text="I dati sono aggiornati ogni 10 minuti&#xd;Il credito indicato è IVA inclusa"
 			 verticalAlign="bottom"/>
 	<s:Label x="115" y="134" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo traffico disponibile:" verticalAlign="bottom"/>
-	<s:Label x="115" y="163" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo credito EOLOvoce:" verticalAlign="bottom"/>
-	<s:Image x="310" y="188" width="40" height="24" smooth="true" source="@Embed('assets/logoNGI.png')"/>
+	<s:Label x="115" y="163" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo credito EOLO Voce:" verticalAlign="bottom"/>
 	<s:Label id="usedTxt" x="248" y="105.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
 	<s:Image id="trafficIcon" right="14" top="13" width="60" height="60" scaleMode="letterbox" smooth="true" source="assets/iconGreen.png"/>
 </s:WindowedApplication>

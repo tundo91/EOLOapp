@@ -3,8 +3,8 @@
 	<id>it.eolo.eolo10app</id>
 	<filename>EOLO10app</filename>
 	<name>EOLO10app - NGI spa</name>
-	<versionNumber>0.1</versionNumber>
-	<versionLabel>v0.1</versionLabel>
+	<versionNumber>1.0</versionNumber>
+	<versionLabel>v1.0</versionLabel>
 	<description>Applicazione EOLO10, permette di visualizzare il credito residuo per le tue telefonate ed il traffico disponibile della tua connessione</description>
 	<copyright>(c) 2012 NGI spa - Developed by EOLOlab</copyright>
 	<initialWindow>
