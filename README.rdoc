@@ -1,6 +1,6 @@
-= EOLO10app
+= EOLOapp
 
-EOLO10app, permette di visualizzare il credito residuo per le tue telefonate ed il traffico disponibile della tua connessione EOLO10 di NGI.
+EOLOapp, permette di visualizzare il credito residuo per le tue telefonate ed il traffico disponibile della tua connessione EOLO di NGI.
 
 == Sviluppo
 Sviluppo a cura dell'EOLOlab lab@eolo.it
