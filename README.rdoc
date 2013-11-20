@@ -1,8 +1,8 @@
 = EOLOapp
 
-EOLOapp, permette di visualizzare il credito residuo per le tue telefonate ed il traffico disponibile della tua connessione EOLO di NGI.
+EOLOapp permette di controllare il traffico consumato e quello residuo di una connessione con limite, oltre al credito EOLO Voce (per tutte le connessioni EOLO con questo accessorio).
 
 == Sviluppo
-Sviluppo a cura dell'EOLOlab lab@eolo.it
+Sviluppo a cura di EOLOlab lab@eolo.it
 
 www.ngi.it
