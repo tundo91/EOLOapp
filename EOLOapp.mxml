@@ -3,11 +3,11 @@
 					   xmlns:s="library://ns.adobe.com/flex/spark"
 					   xmlns:mx="library://ns.adobe.com/flex/mx"
 					   width="365" height="222" backgroundColor="#EDEDED"
-					   applicationComplete="responseRequest.send();refreshData();initApp();checkForUpdate();"
+					   applicationComplete="responseRequest.send();refreshData();initApp();checkForUpdate();hideFields()"
 					   showStatusBar="false">
 	<fx:Declarations>
 		<s:HTTPService id="responseRequest" url="https://care.ngi.it/ws/ws.asp" useProxy="false" method="GET" resultFormat="text"
-					   fault="Alert.show('Impossibile leggere i dati. Verificare la connessione ad Internet.','Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);" result="responseJSON(event)">
+					   fault="Alert.show('Impossibile leggere i dati. Verificare la connessione internet.','Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);" result="responseJSON(event)">
 			<mx:request xmlns="">
 				<!-- Parametri per la GET -->
 				<a>get.quota</a>
@@ -16,6 +16,11 @@
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
+			
+			// Import per la gestione di link
+			import flash.net.navigateToURL;
+			import flash.net.URLRequest;
+			
 			// Import per la gestione dell'update
 			import air.update.ApplicationUpdaterUI;
 			import air.update.events.UpdateEvent;
@@ -28,9 +33,26 @@
 			import mx.events.CloseEvent;
 			import mx.rpc.events.ResultEvent;
 			
+			// Import per la gestione degli offset
+			import mx.geom.TransformOffsets;
+			// Define an instance of TransformOffsets.
+			private var XForm1:TransformOffsets = new TransformOffsets();
+			private function initOffsets1():void {
+				voiceTxt.postLayoutTransformOffsets = XForm1; 
+			}
+			private var XForm2:TransformOffsets = new TransformOffsets();
+			private function initOffsets2():void {
+				voiceTxtLabel.postLayoutTransformOffsets = XForm2; 
+			}
+			
 			// Inizializzo l'icona per gli errori
 			[Embed(source="assets/iconError.png")] public var iconError:Class;
-									
+
+			// Funzione per accedere alla pagina per ricaricare il traffico
+			public function gotoLink():void {
+				navigateToURL(new URLRequest("http://www.ngi.it/it/connettivita/eolo-wireless/listini/accessori/"), "_blank");
+			}
+			
 			// Funzione per il refresh dei dati temporizzato
 			private function refreshData():void {
 				var minuteTimer:Timer = new Timer(300000, 0); // Esecuzione ogni 300000ms (5 minuti) fino a infinito (0)
@@ -41,16 +63,30 @@
 			public function onTick(event:TimerEvent):void {
 				responseRequest.send();
 			}
+
+			// Funzione per nascondere, all'apertura dell'APP, tutti i campi
+			private function hideFields():void {
+				usedTxt.visible = false;
+				usedTxtLabel.visible = false;
+				remainTxt.visible = false;
+				remainTxtLabel.visible = false;
+				nextResetTxt.visible = false;
+				nextResetTxtLabel.visible = false;
+				voiceTxt.visible = false;
+				voiceTxtLabel.visible = false;
+				labelIva.visible = false;
+			}
 			
 			// Funzione per prelevare e parsare il responso
 			private function responseJSON(event:ResultEvent):void {
+				
 				// Prelevo il JSON e lo converto in stringa
 				var rawData:String = String(event.result);
 				var responseJson:Object = JSON.decode(rawData);
 				
 				// Controllo il responso
 				if(responseJson.response.status == 400) {
-					Alert.show("Per poter visualizzare i dati, e' necessario utilizzare una connessione EOLO10",'Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);
+					Alert.show("Questa connessione non e' compatibile con EOLOapp",'Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);
 				} else if(responseJson.response.status == 200) {
 					// Eseguo i calcoli sui valori, facendo il cast corretto
 					var usedValue:int = responseJson.data.used/1024;
@@ -60,10 +96,33 @@
 					if(dispoValue <= 0) {
 						dispoValue = 0;
 					}
+					
 					// Valorizzo i campi sulla base di quanto prelevato dal JSON
-					usedTxt.text = usedValue.toFixed(0) + " MB";
-					voiceTxt.text = responseJson.voice.credit.toFixed(2) + " €";
-					remainTxt.text = dispoValue.toFixed(0).toString() + " MB";
+					if(usedValue > 0 || dispoValue > 0) {
+						usedTxt.visible = true;
+						usedTxtLabel.visible = true;
+						remainTxt.visible = true;
+						remainTxtLabel.visible = true;
+						nextResetTxt.visible = true;
+						nextResetTxtLabel.visible = true;
+						usedTxt.text = usedValue.toString() + " MB"; // Traffico utilizzato float()
+						remainTxt.text = dispoValue.toString() + " MB"; // Traffico rimanente float()
+						nextResetTxt.text = responseJson.data.nextReset.toString(); // Riazzeramento soglie di traffico string()
+					}
+					
+					// Se il valore del traffico voce è "-9999" vuole dire che la voce non e' abilitata
+					if(responseJson.voice.credit.toFixed(2) != -9999) {
+						voiceTxt.visible = true;
+						voiceTxtLabel.visible = true;
+						labelIva.visible = true;
+						voiceTxt.text = responseJson.voice.credit.toFixed(2) + " €";
+					}
+					
+					// Se non ci sono valori di traffico, allora la connessione ha solo la voce abilitata; sposto le etichette per centrarle
+					if(usedValue == 0 && dispoValue == 0 && responseJson.voice.credit.toFixed(2) != -9999) {
+						voiceTxt.postLayoutTransformOffsets.y = voiceTxt.postLayoutTransformOffsets.y - 50;
+						voiceTxtLabel.postLayoutTransformOffsets.y = voiceTxtLabel.postLayoutTransformOffsets.y - 50;
+					}
 					
 					// Cambio il colore dell'icona in funzione del traffico disponibile
 					var percentUsed:int = (usedValue/quotaValue) * 100;
@@ -73,7 +132,7 @@
 						trafficIcon.source = 'assets/iconOrange.png';
 					else if(percentUsed >= 100) {
 						trafficIcon.source = 'assets/iconRed.png';
-						notify();	
+						notify();
 					}
 				} else {
 					Alert.show('Si e\' verificato un errore. Riprovare piu\' tardi','Errore',mx.controls.Alert.OK,this,closeAppOnErr,iconError);
@@ -93,7 +152,7 @@
 			
 			// Inizializzo updater
 			private function checkForUpdate():void{
-				updater.updateURL = "http://www.eolo.it/eolo10app/update.xml";
+				updater.updateURL = "http://www.eolo.it/eoloApp/update.xml";
 				updater.isCheckForUpdateVisible = false;
 				updater.addEventListener(UpdateEvent.INITIALIZED, updaterInitialized);
 				updater.initialize();
@@ -143,11 +202,10 @@
 				myMenu.addItem(openItem); // Inserisce menu per riaprire l'APP
 				myMenu.addItem(new NativeMenuItem("", true)); // Inserisce una riga vuota
 				myMenu.addItem(closeItem); // Inseriesce menu per la chiusura dell'APP
-				
 
 				if (NativeApplication.supportsSystemTrayIcon) { // Per Windows
 					NativeApplication.nativeApplication.autoExit = false;
-					SystemTrayIcon(NativeApplication.nativeApplication.icon).tooltip = "EOLO10app"; // Tooltip dell'app in SysTray
+					SystemTrayIcon(NativeApplication.nativeApplication.icon).tooltip = "EOLOapp"; // Tooltip dell'app in SysTray
 					SystemTrayIcon(NativeApplication.nativeApplication.icon).addEventListener(MouseEvent.CLICK, unDock);
 					stage.nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, winMinimized);
 					SystemTrayIcon(NativeApplication.nativeApplication.icon).menu = myMenu; // Aggiunge il menu
@@ -205,17 +263,44 @@
 			</s:LinearGradient>
 		</s:fill>
 	</s:Rect>
-	<s:Label id="remainTxt" x="274" y="134.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
-	<s:Label id="voiceTxt" x="271" y="163.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
-	<s:Image left="0" bottom="0" width="103" height="107" smooth="true" source="@Embed('assets/bottomSx.png')"/>
-	<s:Image left="11" top="14" width="150" height="82" smooth="true" smoothingQuality="default" source="@Embed('assets/logo.png')"/>
-	<s:Label x="115" y="105" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo traffico di oggi:" verticalAlign="bottom"/>
-	<s:Label x="115" y="193" width="167" height="23" chromeColor="#CCCCCC" color="#FFFFFF"
-			 fontFamily="Verdana" fontSize="8"
-			 text="I dati sono aggiornati ogni 10 minuti&#xd;Il credito indicato è IVA inclusa"
-			 verticalAlign="bottom"/>
-	<s:Label x="115" y="134" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo traffico disponibile:" verticalAlign="bottom"/>
-	<s:Label x="115" y="163" height="18" chromeColor="#CCCCCC" color="#FFFFFF" fontFamily="Verdana" text="Il tuo credito EOLO Voce:" verticalAlign="bottom"/>
-	<s:Label id="usedTxt" x="248" y="105.2" width="80" height="18" color="#FFFFFF" fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold" textAlign="left" verticalAlign="bottom"/>
+	<s:Label id="remainTxt" x="249" y="119.2" width="86" height="18" color="#FFFFFF"
+			 fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold"
+			 textAlign="left" verticalAlign="middle"/>
+	<s:Label id="nextResetTxt" x="249" y="139.2" width="106" height="30" color="#FFFFFF"
+			 fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold"
+			 textAlign="left" verticalAlign="middle"/>
+	<s:Label id="voiceTxt" x="249" y="171.2" width="86" height="18" color="#FFFFFF"
+			 fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold"
+			 textAlign="left" verticalAlign="middle" creationComplete="initOffsets1();"/>
+	<s:Label x="119" y="170.5" width="130" height="18" chromeColor="#CCCCCC" color="#FFFFFF"
+			 fontFamily="Verdana" text="Credito EOLO Voce:" textAlign="left" verticalAlign="middle"
+			 id="voiceTxtLabel" creationComplete="initOffsets2();"/>
+	<s:Image left="0" bottom="0" width="103" height="107" scaleMode="stretch" smooth="true"
+			 smoothingQuality="high" source="@Embed('assets/bottomSx.png')"/>
+	<s:Image left="8" top="9" width="150" height="82" scaleMode="stretch" smooth="true"
+			 smoothingQuality="high" source="@Embed('assets/logo.png')"/>
+	<s:Label id="usedTxtLabel" x="119" y="95" width="130" height="18" chromeColor="#CCCCCC"
+			 color="#FFFFFF" fontFamily="Verdana" text="Traffico consumato:" textAlign="left"
+			 verticalAlign="middle"/>
+	<s:Label id="labelIva" x="193" y="197" width="167" height="11" chromeColor="#CCCCCC"
+			 color="#FFFFFF" fontFamily="Verdana" fontSize="9"
+			 text="Il credito indicato è IVA inclusa" textAlign="right" verticalAlign="middle"/>
+	<s:Label id="labelUpdate" x="160" y="208" width="200" height="11" chromeColor="#CCCCCC"
+			 color="#FFFFFF" fontFamily="Verdana" fontSize="9"
+			 text="I dati sono aggiornati ogni 2 ore" textAlign="right" verticalAlign="middle"/>
+	<s:Label id="remainTxtLabel" x="119" y="119.45" width="130" height="18" chromeColor="#CCCCCC"
+			 color="#FFFFFF" fontFamily="Verdana" text="Traffico disponibile:" textAlign="left"
+			 verticalAlign="middle"/>
+	<s:Label id="nextResetTxtLabel" x="119" y="145" width="130" height="18" chromeColor="#CCCCCC"
+			 color="#FFFFFF" fontFamily="Verdana" text="Scadenza traffico:" textAlign="left"
+			 verticalAlign="middle"/>
+	<s:Label id="usedTxt" x="249" y="95.2" width="86" height="18" color="#FFFFFF"
+			 fontFamily="Verdana" fontSize="13" fontStyle="italic" fontWeight="bold"
+			 textAlign="left" verticalAlign="middle"/>
 	<s:Image id="trafficIcon" right="14" top="13" width="60" height="60" scaleMode="letterbox" smooth="true" source="assets/iconGreen.png"/>
+	<s:Image x="170" y="25" width="115" height="32" scaleMode="letterbox" smooth="true"
+			 smoothingQuality="high" source="@Embed('assets/pulsante.png')"/>
+	<s:Label x="170" y="25" width="102" height="32" click="gotoLink()"
+			 color="#009FDA" fontFamily="Verdana" fontSize="11" mouseChildren="false"
+			 text="Ricarica traffico" textAlign="center" useHandCursor="true" buttonMode="true" verticalAlign="middle"/>
 </s:WindowedApplication>

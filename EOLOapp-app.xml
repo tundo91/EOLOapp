@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <application xmlns="http://ns.adobe.com/air/application/2.6">
 	<id>it.eolo.eolo10app</id>
-	<filename>EOLO10app</filename>
-	<name>EOLO10app - NGI spa</name>
-	<versionNumber>1.0</versionNumber>
-	<versionLabel>v1.0</versionLabel>
-	<description>Applicazione EOLO10, permette di visualizzare il credito residuo per le tue telefonate ed il traffico disponibile della tua connessione</description>
-	<copyright>(c) 2012 NGI spa - Developed by EOLOlab</copyright>
+	<filename>EOLOapp</filename>
+	<name>EOLOapp - NGI spa</name>
+	<versionNumber>2.0.5</versionNumber>
+	<versionLabel>v2.0.5</versionLabel>
+	<description>EOLOapp, permette di visualizzare il credito residuo per le tue telefonate ed il traffico disponibile della tua connessione</description>
+	<copyright>(c) 2013 NGI spa - Developed by EOLOlab</copyright>
 	<initialWindow>
 		<content>[This value will be overwritten by Flash Builder in the output app.xml]</content>
-		<title>EOLO10app - www.ngi.it</title>
+		<title>EOLOapp - www.ngi.it</title>
 		<systemChrome>standard</systemChrome>
 		<transparent>false</transparent>
 		<minimizable>true</minimizable>
